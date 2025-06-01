@@ -6,7 +6,7 @@ typedef struct Respuesta {
     int Respuesta_Id,Pregunta_Id,Respuesta_Nro;
     char Respuesta[50];
     float Ponderacion; // 0 a 1
-    char Elegida;      // 'X' si fue elegida
+    struct Respuesta *sgte;
 } Respuesta;
 
 typedef struct Pregunta {
@@ -32,7 +32,18 @@ typedef struct EncuestaResp {
     Marcado* listaPreguntas; // Lista enlazada de respuestas marcadas
 } EncuestaResp;
 
+//----------------|PROTOTIPOS|----------------------------
+//====|RESPUESTAS|====
+void crudRespuestas();
+void crearRespuesta(Respuesta **l);
+void insertarRespuesta(Respuesta **l, Respuesta *nv, Respuesta *r);
+void mostrarRespuestas(Respuesta *l);
+void modificarRespuesta(Respuesta *l, int id);
+void borrarRespuesta(Respuesta **l, int id, Respuesta *r);
+
 int main() {
+	
+	Respuesta *respL = NULL;
 	int eleccion=-1;
 	
 	while (eleccion != 0) {
@@ -48,6 +59,7 @@ int main() {
                 break;
             case 3:
                 printf("Has elegido el modulo: CRUD de Respuestas\n");
+                crudRespuestas(&respL);
                 break;
             case 4:
                 printf("Has elegido el modulo: Procesamiento de Encuestas (Archivos)\n");
@@ -67,4 +79,188 @@ int main() {
     }
 	
 	return 0;
+}
+//===================================|FUNCIONES|===================================
+
+//===================================|RESPUESTAS|===================================
+void crudRespuestas(Respuesta **l){
+	int opc, id;//opc para ocpion del crud e id para buscar el de modificar y para buscar el id a borrar]
+	
+	printf("====== |MENU CRUD RESPUESTAS| ======\n1.Agregar una respuesta\n2.Modificar una respuesta\n3.Borrar una respuesta\n4.Mostrar respuestas\n0.Salir\n|Ingrese una opcion:|\n");
+	scanf("%d",&opc);
+	while(opc < 0 || opc > 4){
+		printf("|Opcion invalida!|\n|Ingrese nuevamente|\n====== |MENU CRUD RESPUESTAS| ======\n1.Agregar una respuesta\n2.Modificar una respuesta\n3.Borrar una respuesta\n4.Mostrar respuestas\n0.Salir\n|Ingrese una opcion:|\n");
+		scanf("%d",&opc);
+	}
+	switch(opc){
+		case 0: printf("Quintana\n");break;
+		case 1: crearRespuesta(&(*l)); break;
+		case 2: printf("Ingrese el id respuesta a modificar:\n");
+				scanf("%d",&id);
+				modificarRespuesta(*l,id);break;
+		case 3: printf("Ingrese el id respuesta a borrar:\n");
+				scanf("%d",&id);
+				borrarRespuesta(&(*l),id,*l);break;
+		case 4: mostrarRespuestas((*l));break;
+		default: printf("Opcion invalida, Intente nuevamente!\n");
+	}
+}
+
+void crearRespuesta(Respuesta **l){
+	Respuesta *aux = NULL; //sirve solo para recorrer la lista y buscar el maximo id
+	int n = 0; //es el numero de respuesta maximo en una misma pregunta
+	Respuesta *p = (Respuesta *) malloc(sizeof(Respuesta));
+	if(p == NULL){
+		printf("no hay espacio en momoria\n");
+		return;
+	}
+	
+	//obtener el mayor id y ponerle +1
+	if(*l == NULL){
+		p->Respuesta_Id = 1;	
+	}else{
+		aux = (*l)->sgte;
+		while(aux->sgte != *l){
+			aux = aux->sgte;
+		}
+		p->Respuesta_Id = aux->Respuesta_Id + 1;
+	}
+	
+	//cargar id pregunta
+	printf("pregunta id:\n");
+	scanf("%d",&p->Pregunta_Id);
+	
+	//obtener el mayor numero de respuesta y ponerle +1
+	if(*l == NULL){
+		p->Respuesta_Nro = 1;	
+	}else{
+		aux = (*l)->sgte;
+		while(aux->sgte != *l){
+			if(aux->Pregunta_Id == p->Pregunta_Id && aux->Respuesta_Nro > n){ // busca el nodo en la misma pregunta pero con un numero de respuesta mayor
+				n = aux->Respuesta_Nro;
+			}
+			aux = aux->sgte;
+		}
+		p->Respuesta_Nro = aux->Respuesta_Nro + 1;
+	}
+	
+	//cargar los datos restantes, MODIFICAR CUANDO EXISTAN LOS DEMAS CRUDS por si hay limitantes
+	printf("ingrese la respuesta (texto):\n");
+	fflush(stdin);
+	gets(p->Respuesta);
+	fflush(stdin);
+	printf("Ingrese la ponderacion entre 0 y 1\n");
+	scanf("%f",&p->Ponderacion);
+	p->sgte = NULL;
+	insertarRespuesta(&(*l),p,(*l));
+	printf("Se creo una nueva respuesta!\n");
+}
+
+void insertarRespuesta(Respuesta **l, Respuesta *nv, Respuesta *r){
+	Respuesta *aux;
+	if(*l != NULL){
+		if(nv->Respuesta_Id < (*l)->Respuesta_Id){
+			nv->sgte = *l;
+			if(*l == r){
+				aux = *l;
+				while(aux->sgte != *l){
+					aux = aux->sgte;
+				}
+				aux->sgte = nv;
+			}
+			*l = nv;
+		}
+		else{
+			if((*l)->sgte == r){
+				(*l)->sgte = nv;
+				nv->sgte = r;
+			}
+			else{
+				insertarRespuesta(&(*l)->sgte,nv,r);
+			}
+		}
+	}
+	else{
+		*l = nv;
+		(*l)->sgte = *l;
+	}
+}
+
+void mostrarRespuestas(Respuesta *l){
+	Respuesta *r;
+	r = l;
+	if(l != NULL){
+		printf("RESPUESTA ID: %d | PREGUNTA ID: %d | RESPUESTA NRO: %d | RESPUESTA: %s | PONDERACION: %.2f\n",l->Respuesta_Id,l->Pregunta_Id,l->Respuesta_Nro,l->Respuesta,l->Ponderacion);
+		l = l->sgte;
+	}
+	while(l != r){
+		printf("RESPUESTA ID: %d | PREGUNTA ID: %d | RESPUESTA NRO: %d | RESPUESTA: %s | PONDERACION: %.2f\n",l->Respuesta_Id,l->Pregunta_Id,l->Respuesta_Nro,l->Respuesta,l->Ponderacion);
+		l = l->sgte;
+	}
+}
+
+void modificarRespuesta(Respuesta *l, int id){
+	Respuesta *r; // "r" representa en todos los casos donde comienza y termina la lista para no tener entrar en bucle infinito
+	if(l != NULL){
+		r = l;
+		//comparar en el primer nodo
+		if(l->Respuesta_Id == id){
+			printf(" |Encontrado!|\n-Pregunta id (antes: '%d'):\n",l->Pregunta_Id);
+			scanf("%d",&l->Pregunta_Id);
+			printf("Respuesta (antes: '%s'):\n",l->Respuesta);
+			fflush(stdin);
+			gets(l->Respuesta);
+			fflush(stdin);
+			printf("Ponderacion del 0 al 1 (antes: '%.2f'):\n",l->Ponderacion);
+			scanf("%f",&l->Ponderacion);
+			printf("|Datos modificados!|\n");
+			return;
+		}
+		
+		//comparar con el resto
+		l = l->sgte;
+		while(l != r){
+			//se encontro y se modifican los datos del nodo menos el de "Respuesta ID"
+			if(l->Respuesta_Id == id){
+				printf(" |Encontrado!|\n-Pregunta id (antes: '%d'):\n",l->Pregunta_Id);
+				scanf("%d",&l->Pregunta_Id);
+				printf("Respuesta (antes: '%s'):\n",l->Respuesta);
+				fflush(stdin);
+				gets(l->Respuesta);
+				fflush(stdin);
+				printf("Ponderacion del 0 al 1 (antes: '%.2f'):\n",l->Ponderacion);
+				scanf("%f",&l->Ponderacion);
+				printf("|Datos modificados!|\n");
+			}
+			l = l->sgte;
+		}
+	}
+}
+
+void borrarRespuesta(Respuesta **l, int id, Respuesta *r){
+	Respuesta *bor, *ult;
+	if(*l != NULL){
+		if((*l)->Respuesta_Id == id){
+			if(*l = r){
+				ult = *l;
+				while(ult->sgte != *l){
+					ult = ult->sgte;
+				}
+				ult->sgte = (*l)->sgte;
+			}
+			bor = *l;
+			*l = (*l)->sgte;
+			if(*l = r){
+				*l = NULL;
+			}
+			free(bor);
+			printf("|se borro la respuesta|\n");
+		}else{
+			if((*l)->sgte = r){
+				printf("Fin de la lista, no se encontro al nodo\n");
+			}else{
+				borrarRespuesta(&(*l)->sgte,id,r);
+			}
+		}
+	}
 }
